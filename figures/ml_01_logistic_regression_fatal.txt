@@ -1,0 +1,104 @@
+
+Call:  glm(formula = is_fatal ~ ., family = binomial, data = train_fatal)
+
+Coefficients:
+                                        (Intercept)  
+                                          -5.047387  
+                                     area_typeUrban  
+                                          -1.068568  
+                                  hour_groupEvening  
+                                           0.371128  
+                                   hour_groupMidday  
+                                           0.072199  
+                             hour_groupMorning_Rush  
+                                           0.112201  
+                         hour_groupNight_Late_Night  
+                                           0.835379  
+                                  day_of_weekMonday  
+                                          -0.001996  
+                                day_of_weekSaturday  
+                                           0.093326  
+                                  day_of_weekSunday  
+                                           0.076545  
+                                day_of_weekThursday  
+                                           0.052633  
+                                 day_of_weekTuesday  
+                                          -0.001771  
+                               day_of_weekWednesday  
+                                           0.038549  
+                                       seasonSpring  
+                                           0.043635  
+                                       seasonSummer  
+                                           0.002030  
+                                       seasonWinter  
+                                           0.082676  
+ accident_type_desccollision with some other object  
+                                          -1.171984  
+           accident_type_descCollision with vehicle  
+                                          -0.618663  
+   accident_type_descFall from or in moving vehicle  
+                                          -0.356186  
+accident_type_descNo collision and no object struck  
+                                          -1.458545  
+                   accident_type_descOther accident  
+                                          -1.097993  
+                    accident_type_descStruck animal  
+                                          -2.851917  
+                accident_type_descStruck Pedestrian  
+                                           1.161218  
+accident_type_descVehicle overturned (no collision)  
+                                          -1.084449  
+                              atmosph_cond_descDust  
+                                          -0.403320  
+                               atmosph_cond_descFog  
+                                          -0.008603  
+                         atmosph_cond_descNot known  
+                                          -0.560059  
+                           atmosph_cond_descRaining  
+                                          -0.238826  
+                             atmosph_cond_descSmoke  
+                                          -0.494084  
+                           atmosph_cond_descSnowing  
+                                         -10.679536  
+                      atmosph_cond_descStrong winds  
+                                          -0.296055  
+                               surface_cond_descIcy  
+                                          -0.832621  
+                             surface_cond_descMuddy  
+                                          -0.958672  
+                             surface_cond_descSnowy  
+                                           1.085574  
+                              surface_cond_descUnk.  
+                                          -0.934845  
+                               surface_cond_descWet  
+                                          -0.212261  
+                                     no_of_vehicles  
+                                           0.199974  
+                                      speed_zone040  
+                                           0.353897  
+                                      speed_zone050  
+                                           0.824863  
+                                      speed_zone060  
+                                           1.261350  
+                                      speed_zone070  
+                                           1.563328  
+                                      speed_zone075  
+                                           3.100363  
+                                      speed_zone080  
+                                           1.628402  
+                                      speed_zone090  
+                                           2.274705  
+                                      speed_zone100  
+                                           2.227928  
+                                      speed_zone110  
+                                           2.037145  
+                                      speed_zone777  
+                                          -0.310550  
+                                      speed_zone888  
+                                           1.287295  
+                                      speed_zone999  
+                                           0.173067  
+
+Degrees of Freedom: 130911 Total (i.e. Null);  130864 Residual
+Null Deviance:	    22140 
+Residual Deviance: 19580 	AIC: 19680

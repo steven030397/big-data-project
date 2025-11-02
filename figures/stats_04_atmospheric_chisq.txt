@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  atmos_table
+X-squared = 2379.2, df = 7, p-value < 2.2e-16
+

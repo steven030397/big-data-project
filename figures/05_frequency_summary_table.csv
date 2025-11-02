@@ -1,0 +1,281 @@
+area_type,hour_group,day_week_desc,season,n_crashes,fatal_crashes,serious_crashes
+Urban,Morning Rush (6-9),Monday,Spring,1096,8,342
+Urban,Morning Rush (6-9),Monday,Summer,1081,5,365
+Urban,Morning Rush (6-9),Monday,Autumn,1194,11,408
+Urban,Morning Rush (6-9),Monday,Winter,1098,8,353
+Urban,Morning Rush (6-9),Tuesday,Spring,1203,7,359
+Urban,Morning Rush (6-9),Tuesday,Summer,1241,11,378
+Urban,Morning Rush (6-9),Tuesday,Autumn,1433,10,455
+Urban,Morning Rush (6-9),Tuesday,Winter,1317,12,416
+Urban,Morning Rush (6-9),Wednesday,Spring,1231,11,388
+Urban,Morning Rush (6-9),Wednesday,Summer,1174,9,370
+Urban,Morning Rush (6-9),Wednesday,Autumn,1464,13,483
+Urban,Morning Rush (6-9),Wednesday,Winter,1326,11,436
+Urban,Morning Rush (6-9),Thursday,Spring,1187,12,357
+Urban,Morning Rush (6-9),Thursday,Summer,1180,15,364
+Urban,Morning Rush (6-9),Thursday,Autumn,1490,12,458
+Urban,Morning Rush (6-9),Thursday,Winter,1274,10,375
+Urban,Morning Rush (6-9),Friday,Spring,1033,6,329
+Urban,Morning Rush (6-9),Friday,Summer,1104,13,348
+Urban,Morning Rush (6-9),Friday,Autumn,1306,9,426
+Urban,Morning Rush (6-9),Friday,Winter,1180,9,357
+Urban,Morning Rush (6-9),Saturday,Spring,542,6,184
+Urban,Morning Rush (6-9),Saturday,Summer,624,7,237
+Urban,Morning Rush (6-9),Saturday,Autumn,655,4,245
+Urban,Morning Rush (6-9),Saturday,Winter,534,5,207
+Urban,Morning Rush (6-9),Sunday,Spring,404,4,152
+Urban,Morning Rush (6-9),Sunday,Summer,492,11,205
+Urban,Morning Rush (6-9),Sunday,Autumn,428,4,175
+Urban,Morning Rush (6-9),Sunday,Winter,382,9,133
+Urban,Midday (10-14),Monday,Spring,1390,11,457
+Urban,Midday (10-14),Monday,Summer,1431,12,479
+Urban,Midday (10-14),Monday,Autumn,1423,13,437
+Urban,Midday (10-14),Monday,Winter,1232,17,406
+Urban,Midday (10-14),Tuesday,Spring,1402,18,456
+Urban,Midday (10-14),Tuesday,Summer,1462,9,458
+Urban,Midday (10-14),Tuesday,Autumn,1479,12,492
+Urban,Midday (10-14),Tuesday,Winter,1212,9,371
+Urban,Midday (10-14),Wednesday,Spring,1459,10,473
+Urban,Midday (10-14),Wednesday,Summer,1554,13,495
+Urban,Midday (10-14),Wednesday,Autumn,1474,11,480
+Urban,Midday (10-14),Wednesday,Winter,1436,9,498
+Urban,Midday (10-14),Thursday,Spring,1485,16,480
+Urban,Midday (10-14),Thursday,Summer,1576,15,496
+Urban,Midday (10-14),Thursday,Autumn,1552,17,510
+Urban,Midday (10-14),Thursday,Winter,1289,8,429
+Urban,Midday (10-14),Friday,Spring,1508,10,497
+Urban,Midday (10-14),Friday,Summer,1696,10,526
+Urban,Midday (10-14),Friday,Autumn,1565,16,502
+Urban,Midday (10-14),Friday,Winter,1580,14,529
+Urban,Midday (10-14),Saturday,Spring,1684,21,533
+Urban,Midday (10-14),Saturday,Summer,1648,12,514
+Urban,Midday (10-14),Saturday,Autumn,1729,10,550
+Urban,Midday (10-14),Saturday,Winter,1606,13,516
+Urban,Midday (10-14),Sunday,Spring,1291,14,451
+Urban,Midday (10-14),Sunday,Summer,1362,13,454
+Urban,Midday (10-14),Sunday,Autumn,1351,4,488
+Urban,Midday (10-14),Sunday,Winter,1184,11,403
+Urban,Afternoon Rush (15-18),Monday,Spring,1634,9,494
+Urban,Afternoon Rush (15-18),Monday,Summer,1735,12,520
+Urban,Afternoon Rush (15-18),Monday,Autumn,1691,9,559
+Urban,Afternoon Rush (15-18),Monday,Winter,1723,12,506
+Urban,Afternoon Rush (15-18),Tuesday,Spring,1791,12,532
+Urban,Afternoon Rush (15-18),Tuesday,Summer,1991,9,598
+Urban,Afternoon Rush (15-18),Tuesday,Autumn,2013,12,595
+Urban,Afternoon Rush (15-18),Tuesday,Winter,1807,13,544
+Urban,Afternoon Rush (15-18),Wednesday,Spring,1888,17,556
+Urban,Afternoon Rush (15-18),Wednesday,Summer,1863,10,538
+Urban,Afternoon Rush (15-18),Wednesday,Autumn,2053,16,607
+Urban,Afternoon Rush (15-18),Wednesday,Winter,1961,25,604
+Urban,Afternoon Rush (15-18),Thursday,Spring,1915,21,583
+Urban,Afternoon Rush (15-18),Thursday,Summer,1978,10,595
+Urban,Afternoon Rush (15-18),Thursday,Autumn,2115,11,659
+Urban,Afternoon Rush (15-18),Thursday,Winter,1956,14,578
+Urban,Afternoon Rush (15-18),Friday,Spring,1920,11,605
+Urban,Afternoon Rush (15-18),Friday,Summer,1964,16,591
+Urban,Afternoon Rush (15-18),Friday,Autumn,2088,19,628
+Urban,Afternoon Rush (15-18),Friday,Winter,1965,17,589
+Urban,Afternoon Rush (15-18),Saturday,Spring,1103,5,361
+Urban,Afternoon Rush (15-18),Saturday,Summer,1186,13,410
+Urban,Afternoon Rush (15-18),Saturday,Autumn,1273,5,431
+Urban,Afternoon Rush (15-18),Saturday,Winter,1289,12,407
+Urban,Afternoon Rush (15-18),Sunday,Spring,1076,11,353
+Urban,Afternoon Rush (15-18),Sunday,Summer,1075,9,350
+Urban,Afternoon Rush (15-18),Sunday,Autumn,1046,6,385
+Urban,Afternoon Rush (15-18),Sunday,Winter,1020,8,364
+Urban,Evening (19-22),Monday,Spring,528,8,196
+Urban,Evening (19-22),Monday,Summer,570,7,182
+Urban,Evening (19-22),Monday,Autumn,606,14,207
+Urban,Evening (19-22),Monday,Winter,556,8,194
+Urban,Evening (19-22),Tuesday,Spring,614,6,205
+Urban,Evening (19-22),Tuesday,Summer,679,5,231
+Urban,Evening (19-22),Tuesday,Autumn,679,9,222
+Urban,Evening (19-22),Tuesday,Winter,552,8,194
+Urban,Evening (19-22),Wednesday,Spring,661,11,230
+Urban,Evening (19-22),Wednesday,Summer,720,5,245
+Urban,Evening (19-22),Wednesday,Autumn,733,7,255
+Urban,Evening (19-22),Wednesday,Winter,693,8,248
+Urban,Evening (19-22),Thursday,Spring,677,8,242
+Urban,Evening (19-22),Thursday,Summer,755,17,253
+Urban,Evening (19-22),Thursday,Autumn,789,9,303
+Urban,Evening (19-22),Thursday,Winter,713,7,262
+Urban,Evening (19-22),Friday,Spring,780,11,268
+Urban,Evening (19-22),Friday,Summer,785,6,283
+Urban,Evening (19-22),Friday,Autumn,875,11,315
+Urban,Evening (19-22),Friday,Winter,842,18,278
+Urban,Evening (19-22),Saturday,Spring,708,14,280
+Urban,Evening (19-22),Saturday,Summer,663,10,233
+Urban,Evening (19-22),Saturday,Autumn,737,10,286
+Urban,Evening (19-22),Saturday,Winter,757,14,271
+Urban,Evening (19-22),Sunday,Spring,559,11,210
+Urban,Evening (19-22),Sunday,Summer,617,7,227
+Urban,Evening (19-22),Sunday,Autumn,576,7,219
+Urban,Evening (19-22),Sunday,Winter,513,4,204
+Urban,Night/Late Night (23-5),Monday,Spring,289,10,114
+Urban,Night/Late Night (23-5),Monday,Summer,353,11,157
+Urban,Night/Late Night (23-5),Monday,Autumn,309,3,143
+Urban,Night/Late Night (23-5),Monday,Winter,289,8,114
+Urban,Night/Late Night (23-5),Tuesday,Spring,289,3,104
+Urban,Night/Late Night (23-5),Tuesday,Summer,349,11,150
+Urban,Night/Late Night (23-5),Tuesday,Autumn,316,11,129
+Urban,Night/Late Night (23-5),Tuesday,Winter,226,9,88
+Urban,Night/Late Night (23-5),Wednesday,Spring,268,4,125
+Urban,Night/Late Night (23-5),Wednesday,Summer,375,8,139
+Urban,Night/Late Night (23-5),Wednesday,Autumn,333,7,138
+Urban,Night/Late Night (23-5),Wednesday,Winter,280,6,110
+Urban,Night/Late Night (23-5),Thursday,Spring,334,10,137
+Urban,Night/Late Night (23-5),Thursday,Summer,343,8,138
+Urban,Night/Late Night (23-5),Thursday,Autumn,327,8,142
+Urban,Night/Late Night (23-5),Thursday,Winter,297,11,130
+Urban,Night/Late Night (23-5),Friday,Spring,387,8,177
+Urban,Night/Late Night (23-5),Friday,Summer,456,7,190
+Urban,Night/Late Night (23-5),Friday,Autumn,415,10,177
+Urban,Night/Late Night (23-5),Friday,Winter,354,13,141
+Urban,Night/Late Night (23-5),Saturday,Spring,551,18,225
+Urban,Night/Late Night (23-5),Saturday,Summer,589,19,265
+Urban,Night/Late Night (23-5),Saturday,Autumn,550,20,256
+Urban,Night/Late Night (23-5),Saturday,Winter,530,11,221
+Urban,Night/Late Night (23-5),Sunday,Spring,490,11,215
+Urban,Night/Late Night (23-5),Sunday,Summer,615,13,267
+Urban,Night/Late Night (23-5),Sunday,Autumn,578,8,259
+Urban,Night/Late Night (23-5),Sunday,Winter,532,14,237
+Rural,Morning Rush (6-9),Monday,Spring,253,8,102
+Rural,Morning Rush (6-9),Monday,Summer,282,9,112
+Rural,Morning Rush (6-9),Monday,Autumn,284,11,113
+Rural,Morning Rush (6-9),Monday,Winter,240,6,98
+Rural,Morning Rush (6-9),Tuesday,Spring,226,6,88
+Rural,Morning Rush (6-9),Tuesday,Summer,257,13,108
+Rural,Morning Rush (6-9),Tuesday,Autumn,313,12,127
+Rural,Morning Rush (6-9),Tuesday,Winter,240,7,88
+Rural,Morning Rush (6-9),Wednesday,Spring,253,9,98
+Rural,Morning Rush (6-9),Wednesday,Summer,269,12,107
+Rural,Morning Rush (6-9),Wednesday,Autumn,296,4,129
+Rural,Morning Rush (6-9),Wednesday,Winter,239,11,99
+Rural,Morning Rush (6-9),Thursday,Spring,244,9,107
+Rural,Morning Rush (6-9),Thursday,Summer,245,13,101
+Rural,Morning Rush (6-9),Thursday,Autumn,283,10,107
+Rural,Morning Rush (6-9),Thursday,Winter,270,16,115
+Rural,Morning Rush (6-9),Friday,Spring,222,12,102
+Rural,Morning Rush (6-9),Friday,Summer,258,9,101
+Rural,Morning Rush (6-9),Friday,Autumn,285,13,126
+Rural,Morning Rush (6-9),Friday,Winter,243,9,96
+Rural,Morning Rush (6-9),Saturday,Spring,199,13,85
+Rural,Morning Rush (6-9),Saturday,Summer,219,7,98
+Rural,Morning Rush (6-9),Saturday,Autumn,218,7,98
+Rural,Morning Rush (6-9),Saturday,Winter,187,8,81
+Rural,Morning Rush (6-9),Sunday,Spring,182,11,84
+Rural,Morning Rush (6-9),Sunday,Summer,198,5,88
+Rural,Morning Rush (6-9),Sunday,Autumn,196,8,90
+Rural,Morning Rush (6-9),Sunday,Winter,152,6,62
+Rural,Midday (10-14),Monday,Spring,383,13,158
+Rural,Midday (10-14),Monday,Summer,478,23,196
+Rural,Midday (10-14),Monday,Autumn,452,18,180
+Rural,Midday (10-14),Monday,Winter,325,15,147
+Rural,Midday (10-14),Tuesday,Spring,366,24,147
+Rural,Midday (10-14),Tuesday,Summer,432,20,173
+Rural,Midday (10-14),Tuesday,Autumn,370,8,167
+Rural,Midday (10-14),Tuesday,Winter,290,5,119
+Rural,Midday (10-14),Wednesday,Spring,351,12,152
+Rural,Midday (10-14),Wednesday,Summer,451,18,199
+Rural,Midday (10-14),Wednesday,Autumn,351,13,147
+Rural,Midday (10-14),Wednesday,Winter,276,19,115
+Rural,Midday (10-14),Thursday,Spring,341,14,138
+Rural,Midday (10-14),Thursday,Summer,455,25,183
+Rural,Midday (10-14),Thursday,Autumn,413,20,182
+Rural,Midday (10-14),Thursday,Winter,292,13,123
+Rural,Midday (10-14),Friday,Spring,410,20,181
+Rural,Midday (10-14),Friday,Summer,510,20,212
+Rural,Midday (10-14),Friday,Autumn,470,19,206
+Rural,Midday (10-14),Friday,Winter,320,12,121
+Rural,Midday (10-14),Saturday,Spring,763,18,313
+Rural,Midday (10-14),Saturday,Summer,770,22,342
+Rural,Midday (10-14),Saturday,Autumn,790,21,341
+Rural,Midday (10-14),Saturday,Winter,640,12,277
+Rural,Midday (10-14),Sunday,Spring,824,31,334
+Rural,Midday (10-14),Sunday,Summer,848,27,384
+Rural,Midday (10-14),Sunday,Autumn,824,23,364
+Rural,Midday (10-14),Sunday,Winter,640,14,269
+Rural,Afternoon Rush (15-18),Monday,Spring,372,19,139
+Rural,Afternoon Rush (15-18),Monday,Summer,420,23,187
+Rural,Afternoon Rush (15-18),Monday,Autumn,383,13,181
+Rural,Afternoon Rush (15-18),Monday,Winter,335,12,133
+Rural,Afternoon Rush (15-18),Tuesday,Spring,367,14,148
+Rural,Afternoon Rush (15-18),Tuesday,Summer,452,11,187
+Rural,Afternoon Rush (15-18),Tuesday,Autumn,393,14,170
+Rural,Afternoon Rush (15-18),Tuesday,Winter,291,16,136
+Rural,Afternoon Rush (15-18),Wednesday,Spring,356,7,144
+Rural,Afternoon Rush (15-18),Wednesday,Summer,437,18,196
+Rural,Afternoon Rush (15-18),Wednesday,Autumn,349,16,145
+Rural,Afternoon Rush (15-18),Wednesday,Winter,320,8,117
+Rural,Afternoon Rush (15-18),Thursday,Spring,356,13,155
+Rural,Afternoon Rush (15-18),Thursday,Summer,420,15,182
+Rural,Afternoon Rush (15-18),Thursday,Autumn,372,12,176
+Rural,Afternoon Rush (15-18),Thursday,Winter,325,14,133
+Rural,Afternoon Rush (15-18),Friday,Spring,414,15,170
+Rural,Afternoon Rush (15-18),Friday,Summer,453,18,206
+Rural,Afternoon Rush (15-18),Friday,Autumn,425,13,179
+Rural,Afternoon Rush (15-18),Friday,Winter,372,13,149
+Rural,Afternoon Rush (15-18),Saturday,Spring,428,20,189
+Rural,Afternoon Rush (15-18),Saturday,Summer,493,14,246
+Rural,Afternoon Rush (15-18),Saturday,Autumn,451,17,205
+Rural,Afternoon Rush (15-18),Saturday,Winter,379,14,159
+Rural,Afternoon Rush (15-18),Sunday,Spring,416,16,181
+Rural,Afternoon Rush (15-18),Sunday,Summer,477,22,232
+Rural,Afternoon Rush (15-18),Sunday,Autumn,494,20,233
+Rural,Afternoon Rush (15-18),Sunday,Winter,370,19,163
+Rural,Evening (19-22),Monday,Spring,134,9,55
+Rural,Evening (19-22),Monday,Summer,178,7,84
+Rural,Evening (19-22),Monday,Autumn,123,4,48
+Rural,Evening (19-22),Monday,Winter,123,3,51
+Rural,Evening (19-22),Tuesday,Spring,151,2,65
+Rural,Evening (19-22),Tuesday,Summer,184,9,83
+Rural,Evening (19-22),Tuesday,Autumn,124,4,55
+Rural,Evening (19-22),Tuesday,Winter,113,5,54
+Rural,Evening (19-22),Wednesday,Spring,143,5,70
+Rural,Evening (19-22),Wednesday,Summer,185,8,89
+Rural,Evening (19-22),Wednesday,Autumn,151,7,64
+Rural,Evening (19-22),Wednesday,Winter,125,6,47
+Rural,Evening (19-22),Thursday,Spring,139,6,61
+Rural,Evening (19-22),Thursday,Summer,181,5,84
+Rural,Evening (19-22),Thursday,Autumn,155,3,71
+Rural,Evening (19-22),Thursday,Winter,144,3,64
+Rural,Evening (19-22),Friday,Spring,178,11,87
+Rural,Evening (19-22),Friday,Summer,231,13,102
+Rural,Evening (19-22),Friday,Autumn,185,8,74
+Rural,Evening (19-22),Friday,Winter,184,9,74
+Rural,Evening (19-22),Saturday,Spring,209,16,87
+Rural,Evening (19-22),Saturday,Summer,217,14,95
+Rural,Evening (19-22),Saturday,Autumn,183,6,90
+Rural,Evening (19-22),Saturday,Winter,178,10,74
+Rural,Evening (19-22),Sunday,Spring,163,5,75
+Rural,Evening (19-22),Sunday,Summer,225,13,106
+Rural,Evening (19-22),Sunday,Autumn,158,5,71
+Rural,Evening (19-22),Sunday,Winter,132,7,57
+Rural,Night/Late Night (23-5),Monday,Spring,109,8,47
+Rural,Night/Late Night (23-5),Monday,Summer,135,8,51
+Rural,Night/Late Night (23-5),Monday,Autumn,149,11,78
+Rural,Night/Late Night (23-5),Monday,Winter,89,2,45
+Rural,Night/Late Night (23-5),Tuesday,Spring,111,11,43
+Rural,Night/Late Night (23-5),Tuesday,Summer,129,6,63
+Rural,Night/Late Night (23-5),Tuesday,Autumn,90,5,42
+Rural,Night/Late Night (23-5),Tuesday,Winter,95,4,38
+Rural,Night/Late Night (23-5),Wednesday,Spring,111,8,47
+Rural,Night/Late Night (23-5),Wednesday,Summer,135,9,59
+Rural,Night/Late Night (23-5),Wednesday,Autumn,130,8,56
+Rural,Night/Late Night (23-5),Wednesday,Winter,116,4,48
+Rural,Night/Late Night (23-5),Thursday,Spring,100,4,49
+Rural,Night/Late Night (23-5),Thursday,Summer,127,8,67
+Rural,Night/Late Night (23-5),Thursday,Autumn,117,10,50
+Rural,Night/Late Night (23-5),Thursday,Winter,110,6,48
+Rural,Night/Late Night (23-5),Friday,Spring,130,8,63
+Rural,Night/Late Night (23-5),Friday,Summer,158,13,70
+Rural,Night/Late Night (23-5),Friday,Autumn,156,12,76
+Rural,Night/Late Night (23-5),Friday,Winter,123,7,57
+Rural,Night/Late Night (23-5),Saturday,Spring,178,11,93
+Rural,Night/Late Night (23-5),Saturday,Summer,218,12,91
+Rural,Night/Late Night (23-5),Saturday,Autumn,191,20,84
+Rural,Night/Late Night (23-5),Saturday,Winter,180,14,89
+Rural,Night/Late Night (23-5),Sunday,Spring,176,13,89
+Rural,Night/Late Night (23-5),Sunday,Summer,194,11,90
+Rural,Night/Late Night (23-5),Sunday,Autumn,186,11,97
+Rural,Night/Late Night (23-5),Sunday,Winter,158,13,79

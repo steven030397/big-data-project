@@ -1,0 +1,17 @@
+Predicted,Actual,Freq
+Fatal,Fatal,2
+Minor,Fatal,532
+Property_Damage,Fatal,0
+Serious,Fatal,424
+Fatal,Minor,4
+Minor,Minor,30957
+Property_Damage,Minor,0
+Serious,Minor,4315
+Fatal,Property_Damage,0
+Minor,Property_Damage,2
+Property_Damage,Property_Damage,0
+Serious,Property_Damage,0
+Fatal,Serious,8
+Minor,Serious,15394
+Property_Damage,Serious,0
+Serious,Serious,4468

@@ -1,0 +1,18 @@
+                 Actual
+Predicted         Fatal Minor
+  Fatal               2     4
+  Minor             532 30957
+  Property_Damage     0     0
+  Serious           424  4315
+                 Actual
+Predicted         Property_Damage
+  Fatal                         0
+  Minor                         2
+  Property_Damage               0
+  Serious                       0
+                 Actual
+Predicted         Serious
+  Fatal                 8
+  Minor             15394
+  Property_Damage       0
+  Serious            4468

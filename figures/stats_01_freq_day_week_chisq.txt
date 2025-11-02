@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  freq_day_week
+X-squared = 2368.4, df = 6, p-value < 2.2e-16
+

@@ -1,0 +1,24 @@
+
+Call:
+ randomForest(formula = severity_category ~ ., data = train_severity,      ntree = 100, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 100
+No. of variables tried at each split: 3
+
+        OOB estimate of  error rate: 36.74%
+Confusion matrix:
+                Fatal Minor
+Fatal               3  1150
+Minor              12 72267
+Property_Damage     0     1
+Serious            18 35587
+                Property_Damage Serious
+Fatal                         0    1022
+Minor                         0   10301
+Property_Damage               0       1
+Serious                       0   10550
+                class.error
+Fatal             0.9986207
+Minor             0.1248850
+Property_Damage   1.0000000
+Serious           0.7714224

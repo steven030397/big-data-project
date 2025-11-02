@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  crash_type_table
+X-squared = 39102, df = 8, p-value < 2.2e-16
+

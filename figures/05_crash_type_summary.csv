@@ -1,0 +1,19 @@
+area_type,accident_type_desc,n_crashes,fatal_crashes,proportion
+Urban,Collision with vehicle,107512,640,0.7323057222453052
+Urban,Struck Pedestrian,14866,416,0.10125806297807415
+Urban,Collision with a fixed object,14541,370,0.09904436255644936
+Urban,No collision and no object struck,4382,22,0.029847493069414834
+Urban,Vehicle overturned (no collision),3549,14,0.024173608604142686
+Urban,Fall from or in moving vehicle,899,13,0.006123435935509798
+Urban,collision with some other object,672,6,0.004577251333328793
+Urban,Struck animal,259,0,0.0017641489513871387
+Urban,Other accident,133,3,9.059143263879902e-4
+Rural,Collision with vehicle,14242,709,0.35423454794179826
+Rural,Collision with a fixed object,13531,734,0.3365501803258301
+Rural,Vehicle overturned (no collision),5268,97,0.13102847904489492
+Rural,No collision and no object struck,3306,26,0.08222857853500809
+Rural,Struck animal,1758,11,0.04372590473821664
+Rural,collision with some other object,1274,14,0.031687601044646185
+Rural,Struck Pedestrian,440,53,0.01094391244870041
+Rural,Fall from or in moving vehicle,318,5,0.007909463997015297
+Rural,Other accident,68,0,0.0016913319238900633

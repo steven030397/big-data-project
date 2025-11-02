@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  surface_table
+X-squared = 2750.5, df = 5, p-value < 2.2e-16
+

@@ -1,0 +1,6 @@
+Model,Task,Accuracy
+Logistic Regression (Fatal),Binary Classification,0.9829
+Random Forest (Fatal),Binary Classification,0.9829
+Random Forest (Severity),Multi-class Classification,0.6314
+Random Forest - Urban,Binary Classification (Urban),0.9894
+Random Forest - Rural,Binary Classification (Rural),0.9593

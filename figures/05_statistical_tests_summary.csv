@@ -1,0 +1,10 @@
+Test,Test_Type,P_Value,Significant
+Frequency by Day of Week,Chi-square,0,Yes
+Frequency by Time Period,Chi-square,0,Yes
+Frequency by Season,Chi-square,0,Yes
+Severity Distribution,Chi-square,0,Yes
+Fatal Crash Rates,Fisher's Exact,0,Yes
+Severity by Day of Week,Chi-square,0,Yes
+Severity by Time Period,Chi-square,0,Yes
+Severity by Season,Chi-square,0,Yes
+Crash Type Distribution,Chi-square,0,Yes

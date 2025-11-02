@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  severity_time
+X-squared = 4668.3, df = 27, p-value < 2.2e-16
+

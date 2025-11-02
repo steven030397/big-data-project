@@ -1,0 +1,31 @@
+# RStudio
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# renv
+renv/library/
+renv/python/
+renv/staging/
+
+# Data (interim and processed)
+data/cleaned/
+data/processed/
+
+# Figures (optional - uncomment if you don't want to track figures)
+# figures/
+
+# Reports output
+reports/*.html
+reports/*.pdf
+reports/*.docx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*~

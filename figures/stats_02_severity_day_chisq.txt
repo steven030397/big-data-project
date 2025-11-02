@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  severity_day
+X-squared = 3799.6, df = 39, p-value < 2.2e-16
+

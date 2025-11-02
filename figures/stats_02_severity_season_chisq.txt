@@ -1,0 +1,6 @@
+
+	Pearson's Chi-squared test
+
+data:  severity_season
+X-squared = 3605.8, df = 21, p-value < 2.2e-16
+

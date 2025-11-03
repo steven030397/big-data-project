@@ -15,11 +15,11 @@
 source(here::here("scripts", "00_setup.R"))
 
 # Install ML packages if needed
-ml_packages <- c("randomForest", "rpart", "rpart.plot", "caret", "pROC", "vcd")
+ml_packages <- c("randomForest", "rpart", "rpart.plot", "caret", "pROC", "vcd", "ROSE", "PRROC")
 install_if_missing <- function(packages) {
   new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
   if(length(new_packages) > 0) {
-    install.packages(new_packages, dependencies = TRUE)
+    install.packages(new_packages, dependencies = TRUE, repos = "https://cloud.r-project.org")
   }
 }
 install_if_missing(ml_packages)
@@ -151,8 +151,414 @@ print_results <- function(obj, title = "") {
   cat("\n")
 }
 
+# =============================================================================
+# IMPROVED PIPELINE: Stratified CV + SMOTE + Grid Search + PR-Curve Threshold
+# =============================================================================
+
+# Function to find optimal threshold using Precision-Recall curve (maximizes F1)
+find_optimal_threshold_pr <- function(proba, actual, positive_class = 1, metric = "f1", verbose = TRUE) {
+  # Create PR curve data
+  pr_data <- tibble(
+    threshold = seq(0.01, 0.99, by = 0.01),
+    precision = NA_real_,
+    recall = NA_real_,
+    f1 = NA_real_
+  )
+  
+  for (i in seq_along(pr_data$threshold)) {
+    thresh <- pr_data$threshold[i]
+    pred_class <- ifelse(proba > thresh, positive_class, 1 - positive_class)
+    cm <- confusionMatrix(as.factor(pred_class), as.factor(actual), positive = as.character(positive_class))
+    
+    prec <- ifelse("Precision" %in% names(cm$byClass), cm$byClass["Precision"], 0)
+    rec <- ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], 0)
+    
+    pr_data$precision[i] <- prec
+    pr_data$recall[i] <- rec
+    pr_data$f1[i] <- ifelse(prec + rec > 0, 2 * (prec * rec) / (prec + rec), 0)
+  }
+  
+  # Find optimal threshold
+  if (metric == "f1") {
+    best_idx <- which.max(pr_data$f1)
+    optimal_threshold <- pr_data$threshold[best_idx]
+    best_metric <- pr_data$f1[best_idx]
+    metric_name <- "F1"
+  } else if (metric == "recall") {
+    # Maximize recall while maintaining minimum precision
+    min_precision <- 0.05  # At least 5% precision
+    valid_idx <- which(pr_data$precision >= min_precision)
+    if (length(valid_idx) > 0) {
+      best_idx <- valid_idx[which.max(pr_data$recall[valid_idx])]
+      optimal_threshold <- pr_data$threshold[best_idx]
+      best_metric <- pr_data$recall[best_idx]
+    } else {
+      best_idx <- which.max(pr_data$recall)
+      optimal_threshold <- pr_data$threshold[best_idx]
+      best_metric <- pr_data$recall[best_idx]
+    }
+    metric_name <- "Recall"
+  }
+  
+  if (verbose) {
+    cat("  Optimal threshold:", round(optimal_threshold, 4), 
+        "(maximizes", metric_name, "=", round(best_metric, 4), ")\n")
+  }
+  
+  return(list(threshold = optimal_threshold, pr_data = pr_data))
+}
+
+# Stratified CV with SMOTE pipeline for Random Forest
+train_rf_with_smote_cv <- function(train_data, test_data, target_var = "is_fatal", 
+                                   features, n_folds = 5, tune_grid = NULL) {
+  cat("  Setting up stratified 5-fold cross-validation with SMOTE pipeline...\n")
+  
+  # Prepare data
+  X_train <- train_data %>% select(all_of(features))
+  y_train <- as.factor(train_data[[target_var]])
+  X_test <- test_data %>% select(all_of(features))
+  y_test <- as.factor(test_data[[target_var]])
+  
+  # Create stratified folds (preserves class distribution)
+  set.seed(42)
+  folds <- createFolds(y_train, k = n_folds, list = TRUE, returnTrain = FALSE)
+  
+  cat("  Class distribution in training:", table(y_train), "\n")
+  
+  # Default tune grid if not provided
+  if (is.null(tune_grid)) {
+    tune_grid <- expand.grid(
+      mtry = c(3, 5, 7),
+      ntree = c(100, 200)
+    )
+  }
+  
+  # Store CV results
+  cv_results <- list()
+  cv_f1_scores <- numeric(nrow(tune_grid))
+  
+  cat("  Performing grid search with", nrow(tune_grid), "parameter combinations...\n")
+  
+  # Grid search with CV
+  for (param_idx in 1:nrow(tune_grid)) {
+    params <- tune_grid[param_idx, ]
+    fold_scores <- numeric(n_folds)
+    
+    cat("    Testing: mtry =", params$mtry, ", ntree =", params$ntree, "\n")
+    
+    for (fold in 1:n_folds) {
+      # Split fold
+      val_indices <- folds[[fold]]
+      train_indices <- setdiff(1:length(y_train), val_indices)
+      
+      X_train_fold <- X_train[train_indices, ]
+      y_train_fold <- y_train[train_indices]
+      X_val_fold <- X_train[val_indices, ]
+      y_val_fold <- y_train[val_indices]
+      
+      # Apply SMOTE to training fold only (resample inside CV)
+      tryCatch({
+        train_fold_data <- bind_cols(X_train_fold, tibble(target = y_train_fold))
+        
+        # SMOTE using ROSE package
+        train_fold_balanced <- ROSE(target ~ ., data = train_fold_data, seed = 42)$data
+        
+        X_train_balanced <- train_fold_balanced %>% select(-target)
+        y_train_balanced <- as.factor(train_fold_balanced$target)
+        
+        # Train Random Forest with balanced data
+        # Use balanced class weights
+        class_counts <- table(y_train_balanced)
+        class_weights <- c(
+          sum(class_counts) / (2 * class_counts[1]),
+          sum(class_counts) / (2 * class_counts[2])
+        )
+        names(class_weights) <- names(class_counts)
+        
+        # Combine data for randomForest
+        train_balanced_df <- bind_cols(X_train_balanced, tibble(is_fatal = as.numeric(as.character(y_train_balanced))))
+        train_balanced_df$is_fatal <- as.factor(train_balanced_df$is_fatal)
+        
+        rf_model <- randomForest(
+          is_fatal ~ .,
+          data = train_balanced_df,
+          ntree = params$ntree,
+          mtry = params$mtry,
+          classwt = class_weights,
+          importance = FALSE
+        )
+        
+        # Predict on validation fold
+        val_pred_proba <- predict(rf_model, newdata = X_val_fold, type = "prob")[,2]
+        
+        # Find optimal threshold for this fold using PR curve (silent during CV)
+        pr_result <- find_optimal_threshold_pr(val_pred_proba, y_val_fold, 
+                                               positive_class = 1, metric = "f1", verbose = FALSE)
+        
+        # Predict with optimal threshold
+        val_pred_class <- ifelse(val_pred_proba > pr_result$threshold, 1, 0)
+        
+        # Calculate F1
+        cm <- confusionMatrix(as.factor(val_pred_class), y_val_fold, positive = "1")
+        prec <- ifelse("Precision" %in% names(cm$byClass), cm$byClass["Precision"], 0)
+        rec <- ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], 0)
+        f1 <- ifelse(prec + rec > 0, 2 * (prec * rec) / (prec + rec), 0)
+        
+        fold_scores[fold] <- f1
+      }, error = function(e) {
+        cat("      Warning: SMOTE failed in fold", fold, "- using class weights only\n")
+        # Fallback: use class weights without SMOTE
+        class_counts <- table(y_train_fold)
+        class_weights <- c(
+          sum(class_counts) / (2 * class_counts[1]),
+          sum(class_counts) / (2 * class_counts[2])
+        )
+        names(class_weights) <- names(class_counts)
+        
+        # Combine data for randomForest
+        train_fold_df <- bind_cols(X_train_fold, tibble(is_fatal = as.numeric(as.character(y_train_fold))))
+        train_fold_df$is_fatal <- as.factor(train_fold_df$is_fatal)
+        
+        rf_model <- randomForest(
+          is_fatal ~ .,
+          data = train_fold_df,
+          ntree = params$ntree,
+          mtry = params$mtry,
+          classwt = class_weights
+        )
+        
+        val_pred_proba <- predict(rf_model, newdata = X_val_fold, type = "prob")[,2]
+        val_pred_class <- ifelse(val_pred_proba > 0.5, 1, 0)
+        
+        cm <- confusionMatrix(as.factor(val_pred_class), y_val_fold, positive = "1")
+        prec <- ifelse("Precision" %in% names(cm$byClass), cm$byClass["Precision"], 0)
+        rec <- ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], 0)
+        f1 <- ifelse(prec + rec > 0, 2 * (prec * rec) / (prec + rec), 0)
+        
+        fold_scores[fold] <- f1
+      })
+    }
+    
+    cv_f1_scores[param_idx] <- mean(fold_scores)
+    cat("    Mean CV F1:", round(mean(fold_scores), 4), "\n")
+    flush.console()  # Ensure output is displayed
+  }
+  
+  # Find best parameters
+  best_idx <- which.max(cv_f1_scores)
+  best_params <- tune_grid[best_idx, ]
+  best_cv_f1 <- cv_f1_scores[best_idx]
+  
+  cat("  Best parameters: mtry =", best_params$mtry, ", ntree =", best_params$ntree, 
+      "(CV F1 =", round(best_cv_f1, 4), ")\n")
+  
+  # Retrain final model on full training set with best parameters + SMOTE
+  cat("  Retraining final model on full training set with SMOTE...\n")
+  train_full_data <- bind_cols(X_train, tibble(target = y_train))
+  train_full_balanced <- ROSE(target ~ ., data = train_full_data, seed = 42)$data
+  
+  X_train_final <- train_full_balanced %>% select(-target)
+  y_train_final <- as.factor(train_full_balanced$target)
+  
+  class_counts <- table(y_train_final)
+  class_weights <- c(
+    sum(class_counts) / (2 * class_counts[1]),
+    sum(class_counts) / (2 * class_counts[2])
+  )
+  names(class_weights) <- names(class_counts)
+  
+  # Combine data for randomForest
+  train_final_df <- bind_cols(X_train_final, tibble(is_fatal = as.numeric(as.character(y_train_final))))
+  train_final_df$is_fatal <- as.factor(train_final_df$is_fatal)
+  
+  final_model <- randomForest(
+    is_fatal ~ .,
+    data = train_final_df,
+    ntree = best_params$ntree,
+    mtry = best_params$mtry,
+    classwt = class_weights,
+    importance = TRUE
+  )
+  
+  # IMPORTANT: Find optimal threshold on original (imbalanced) validation holdout
+  # This prevents overfitting to SMOTE-balanced data
+  cat("  Optimizing threshold on validation holdout (maintaining original class imbalance)...\n")
+  
+  # Create a validation holdout from original training data (20% holdout)
+  set.seed(42)
+  val_holdout_idx <- createDataPartition(y_train, p = 0.2, list = FALSE)
+  X_val_holdout <- X_train[val_holdout_idx, ]
+  y_val_holdout <- y_train[val_holdout_idx]
+  
+  # Predict on validation holdout using final model
+  val_holdout_proba <- predict(final_model, newdata = X_val_holdout, type = "prob")[,2]
+  
+  # Find optimal threshold on validation holdout (realistic imbalanced data)
+  pr_result_val <- find_optimal_threshold_pr(val_holdout_proba, y_val_holdout, 
+                                               positive_class = 1, metric = "f1", verbose = TRUE)
+  
+  optimal_threshold <- pr_result_val$threshold
+  
+  # Predict on test set
+  test_pred_proba <- predict(final_model, newdata = X_test, type = "prob")[,2]
+  
+  # Apply optimized threshold to test set
+  test_pred_class <- ifelse(test_pred_proba > optimal_threshold, 1, 0)
+  
+  # Get PR data for plotting (from validation holdout, not balanced training)
+  pr_data <- pr_result_val$pr_data
+  
+  return(list(
+    model = final_model,
+    best_params = best_params,
+    optimal_threshold = optimal_threshold,
+    test_pred_proba = test_pred_proba,
+    test_pred_class = test_pred_class,
+    cv_results = cv_f1_scores,
+    pr_data = pr_data
+  ))
+}
+
+# Legacy CV function (kept for compatibility)
+find_optimal_threshold_cv <- function(data, formula, model_type = "glm", n_folds = 5, positive_class = 1, metric = "youden") {
+  # Extract target variable name from formula
+  formula_str <- as.character(formula)
+  target_var_str <- formula_str[2]
+  # Handle factor conversion in formula (remove as.factor() wrapper if present)
+  target_var_clean <- gsub("as\\.factor\\((.*)\\)", "\\1", target_var_str)
+  target_var_clean <- trimws(target_var_clean)
+  
+  # Get actual target values for creating folds
+  target_values <- data[[target_var_clean]]
+  
+  # Create folds
+  set.seed(1234)
+  folds <- createFolds(target_values, k = n_folds, list = TRUE)
+  
+  # Optimize threshold search: fewer steps for RF (it's slower), more for GLM
+  if (model_type == "rf") {
+    # For RF: coarser search to speed up (every 0.02 instead of 0.01)
+    thresholds <- seq(0.01, 0.5, by = 0.02)
+    # Use fewer trees during CV for speed (will use full 100 for final model)
+    cv_ntree <- 50
+  } else {
+    # For GLM: finer search (faster to compute)
+    thresholds <- seq(0.01, 0.5, by = 0.01)
+    cv_ntree <- NULL  # Not used for GLM
+  }
+  
+  if (metric == "youden") {
+    cv_scores <- numeric(length(thresholds))
+    metric_name <- "Youden's Index (Sensitivity + Specificity)"
+  } else if (metric == "f1") {
+    cv_scores <- numeric(length(thresholds))
+    metric_name <- "F1 Score"
+  } else if (metric == "balanced_acc") {
+    cv_scores <- numeric(length(thresholds))
+    metric_name <- "Balanced Accuracy"
+  }
+  
+  total_iterations <- length(thresholds) * n_folds
+  
+  cat("  Cross-validating across", n_folds, "folds to find optimal threshold (maximizing", metric_name, ")...\n")
+  cat("  Testing", length(thresholds), "thresholds (~", total_iterations, "model trainings)\n")
+  if (model_type == "rf") {
+    cat("  Note: Using", cv_ntree, "trees during CV for speed (final model uses 100)\n")
+  }
+  
+  start_time <- Sys.time()
+  
+  iteration <- 0
+  for (i in seq_along(thresholds)) {
+    threshold <- thresholds[i]
+    fold_scores <- numeric(n_folds)
+    
+    for (fold in seq_along(folds)) {
+      iteration <- iteration + 1
+      
+      # Progress indicator every 10 iterations
+      if (iteration %% 10 == 0 || iteration == 1) {
+        elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+        cat(sprintf("    Progress: %d/%d (%.1f%%) - Elapsed: %.1f seconds\n", 
+                    iteration, total_iterations, 
+                    100 * iteration / total_iterations, elapsed))
+      }
+      
+      # Split data
+      train_indices <- unlist(folds[-fold])
+      val_indices <- folds[[fold]]
+      train_fold <- data[train_indices, ]
+      val_fold <- data[val_indices, ]
+      
+      # Train model
+      if (model_type == "glm") {
+        model <- glm(formula, data = train_fold, family = binomial)
+        pred_proba <- predict(model, newdata = val_fold, type = "response")
+      } else if (model_type == "rf") {
+        # Calculate class weights for this fold
+        fold_target_var <- train_fold[[target_var_clean]]
+        fold_target_factor <- as.factor(fold_target_var)
+        fold_class_counts <- table(fold_target_factor)
+        fold_class_levels <- names(fold_class_counts)
+        fold_class_weights <- c(
+          sum(fold_class_counts) / (2 * fold_class_counts[fold_class_levels[1]]),
+          sum(fold_class_counts) / (2 * fold_class_counts[fold_class_levels[2]])
+        )
+        names(fold_class_weights) <- fold_class_levels
+        
+        model <- randomForest(
+          formula,
+          data = train_fold,
+          ntree = cv_ntree,  # Use fewer trees during CV for speed
+          classwt = fold_class_weights
+        )
+        pred_proba <- predict(model, newdata = val_fold, type = "prob")[, as.character(positive_class)]
+      }
+      
+      # Apply threshold and calculate metric
+      pred_class <- ifelse(pred_proba > threshold, positive_class, 1 - positive_class)
+      actual <- val_fold[[target_var_clean]]
+      
+      # Calculate confusion matrix metrics
+      cm <- confusionMatrix(as.factor(pred_class), as.factor(actual), positive = as.character(positive_class))
+      sensitivity <- ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], 0)
+      specificity <- ifelse("Specificity" %in% names(cm$byClass), cm$byClass["Specificity"], 0)
+      
+      # Calculate chosen metric
+      if (metric == "youden") {
+        # Youden's index: maximizes (sensitivity + specificity)
+        score <- sensitivity + specificity
+      } else if (metric == "f1") {
+        precision <- ifelse("Precision" %in% names(cm$byClass), cm$byClass["Precision"], 0)
+        recall <- sensitivity
+        score <- ifelse(precision + recall > 0, 2 * (precision * recall) / (precision + recall), 0)
+      } else if (metric == "balanced_acc") {
+        # Balanced accuracy: (sensitivity + specificity) / 2
+        score <- (sensitivity + specificity) / 2
+      }
+      
+      fold_scores[fold] <- score
+    }
+    
+    cv_scores[i] <- mean(fold_scores)
+  }
+  
+  elapsed_total <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+  cat("  CV complete! Total time:", round(elapsed_total, 1), "seconds\n")
+  
+  # Find threshold with maximum score
+  best_idx <- which.max(cv_scores)
+  optimal_threshold <- thresholds[best_idx]
+  best_score <- cv_scores[best_idx]
+  
+  cat("  Optimal threshold:", round(optimal_threshold, 4), 
+      "(maximizes", metric_name, "=", round(best_score, 4), "across CV folds)\n")
+  
+  return(optimal_threshold)
+}
+
 # Print confusion matrix nicely formatted
-print_confusion_matrix <- function(predicted, actual, title = "Confusion Matrix") {
+print_confusion_matrix <- function(predicted, actual, title = "Confusion Matrix", positive_class = "1") {
   # Ensure both predicted and actual are factors with same levels
   actual_factor <- as.factor(actual)
   predicted_factor <- as.factor(predicted)
@@ -166,12 +572,14 @@ print_confusion_matrix <- function(predicted, actual, title = "Confusion Matrix"
     all_levels <- c("0", "1")
     predicted_factor <- factor(predicted, levels = all_levels)
     actual_factor <- factor(actual, levels = all_levels)
+    
+    # Explicitly set positive class for binary classification
+    cm <- confusionMatrix(predicted_factor, actual_factor, positive = positive_class)
   } else {
     predicted_factor <- factor(predicted, levels = all_levels)
     actual_factor <- factor(actual, levels = all_levels)
+    cm <- confusionMatrix(predicted_factor, actual_factor)
   }
-  
-  cm <- confusionMatrix(predicted_factor, actual_factor)
   
   cat("\n", title, ":\n", sep = "")
   cat("========================================\n")
@@ -213,6 +621,7 @@ print_confusion_matrix <- function(predicted, actual, title = "Confusion Matrix"
   }
   
   cat("========================================\n\n")
+  flush.console()  # Force output to display immediately
   
   return(cm)
 }
@@ -251,16 +660,44 @@ plot_confusion_matrix <- function(conf_mat, title = "Confusion Matrix", model_na
 }
 
 # Calculate performance metrics
-calculate_metrics <- function(predicted, actual) {
-  cm <- confusionMatrix(as.factor(predicted), as.factor(actual))
+calculate_metrics <- function(predicted, actual, positive_class = "1") {
+  # Ensure factors with consistent levels
+  predicted_factor <- as.factor(predicted)
+  actual_factor <- as.factor(actual)
+  
+  # For binary classification, explicitly set positive class
+  if (length(levels(actual_factor)) == 2) {
+    # Reorder levels so positive class is second (for caret confusionMatrix)
+    levels_ordered <- sort(levels(actual_factor))
+    if (positive_class %in% levels_ordered) {
+      # Put positive class last
+      other_level <- levels_ordered[levels_ordered != positive_class]
+      levels_ordered <- c(other_level, positive_class)
+      actual_factor <- factor(actual, levels = levels_ordered)
+      predicted_factor <- factor(predicted, levels = levels_ordered)
+    }
+    
+    cm <- confusionMatrix(predicted_factor, actual_factor, positive = positive_class)
+  } else {
+    cm <- confusionMatrix(predicted_factor, actual_factor)
+  }
+  
+  # Check for class imbalance warning
+  predicted_table <- table(predicted_factor)
+  if (length(predicted_table) == 1) {
+    warning("WARNING: Model predicts only one class! Check for class imbalance issues.")
+  }
+  
   metrics <- tibble(
     Accuracy = cm$overall["Accuracy"],
-    Sensitivity = cm$byClass["Sensitivity"],
-    Specificity = cm$byClass["Specificity"],
-    Precision = cm$byClass["Precision"],
-    Recall = cm$byClass["Sensitivity"],
-    F1 = 2 * (cm$byClass["Precision"] * cm$byClass["Sensitivity"]) / 
-         (cm$byClass["Precision"] + cm$byClass["Sensitivity"])
+    Sensitivity = ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], NA),
+    Specificity = ifelse("Specificity" %in% names(cm$byClass), cm$byClass["Specificity"], NA),
+    Precision = ifelse("Precision" %in% names(cm$byClass), cm$byClass["Precision"], NA),
+    Recall = ifelse("Sensitivity" %in% names(cm$byClass), cm$byClass["Sensitivity"], NA),
+    F1 = ifelse("F1" %in% names(cm$byClass), cm$byClass["F1"], 
+                ifelse("Precision" %in% names(cm$byClass) && "Sensitivity" %in% names(cm$byClass),
+                       2 * (cm$byClass["Precision"] * cm$byClass["Sensitivity"]) / 
+                       (cm$byClass["Precision"] + cm$byClass["Sensitivity"]), NA))
   )
   return(list(cm = cm, metrics = metrics))
 }
@@ -286,18 +723,46 @@ test_fatal <- test_data %>%
 
 cat("Training samples:", nrow(train_fatal), "\n")
 cat("Test samples:", nrow(test_fatal), "\n")
-cat("Fatal rate in training:", round(100*mean(train_fatal$is_fatal), 2), "%\n\n")
+cat("Fatal rate in training:", round(100*mean(train_fatal$is_fatal), 2), "%\n")
+cat("Fatal rate in test:", round(100*mean(test_fatal$is_fatal), 2), "%\n")
+cat("Class distribution - Training:\n")
+cat("  Non-fatal (0):", sum(train_fatal$is_fatal == 0), 
+    "(", round(100*mean(train_fatal$is_fatal == 0), 2), "%)\n")
+cat("  Fatal (1):", sum(train_fatal$is_fatal == 1), 
+    "(", round(100*mean(train_fatal$is_fatal == 1), 2), "%)\n")
+cat("Class distribution - Test:\n")
+cat("  Non-fatal (0):", sum(test_fatal$is_fatal == 0), 
+    "(", round(100*mean(test_fatal$is_fatal == 0), 2), "%)\n")
+cat("  Fatal (1):", sum(test_fatal$is_fatal == 1), 
+    "(", round(100*mean(test_fatal$is_fatal == 1), 2), "%)\n")
+if (mean(train_fatal$is_fatal) < 0.05 || mean(train_fatal$is_fatal) > 0.95) {
+  cat("\nWARNING: Severe class imbalance detected! Models may predict all one class.\n")
+  cat("Consider using class weights, resampling, or threshold tuning.\n")
+}
+cat("\n")
 
-# 1.1 Logistic Regression
+# 1.1 Logistic Regression with PR-curve threshold tuning
 cat("1.1 Training Logistic Regression model...\n")
+cat("  Using Precision-Recall curve to find optimal threshold (maximizing F1)\n")
+
+# Train model on full training set
 glm_fatal <- glm(is_fatal ~ ., data = train_fatal, family = binomial)
 glm_pred <- predict(glm_fatal, newdata = test_fatal, type = "response")
-glm_pred_class <- ifelse(glm_pred > 0.5, 1, 0)
+
+# Find optimal threshold using PR curve on training predictions
+glm_train_pred <- predict(glm_fatal, newdata = train_fatal, type = "response")
+glm_pr_result <- find_optimal_threshold_pr(glm_train_pred, train_fatal$is_fatal, 
+                                            positive_class = 1, metric = "f1")
+glm_optimal_threshold <- glm_pr_result$threshold
+glm_pr_data <- glm_pr_result$pr_data
+
+# Apply optimal threshold
+glm_pred_class <- ifelse(glm_pred > glm_optimal_threshold, 1, 0)
 
 glm_confusion <- table(Predicted = glm_pred_class, Actual = test_fatal$is_fatal)
 glm_metrics_result <- print_confusion_matrix(glm_pred_class, test_fatal$is_fatal, 
                                              "Logistic Regression Confusion Matrix")
-glm_metrics <- calculate_metrics(glm_pred_class, test_fatal$is_fatal)
+glm_metrics <- calculate_metrics(glm_pred_class, test_fatal$is_fatal, positive_class = "1")
 
 # Visualize confusion matrix
 glm_cm_plot <- plot_confusion_matrix(
@@ -326,6 +791,36 @@ ggsave(here(figures_dir, "ml_01_logistic_roc_curve.png"), glm_roc_plot,
        width = 8, height = 6, dpi = 300)
 cat("  ROC curve plot saved (AUC =", round(auc(glm_roc), 3), ")\n")
 
+# Precision-Recall Curve for Logistic Regression
+if (require(PRROC, quietly = TRUE)) {
+  glm_pr_auc <- pr.curve(scores.class0 = glm_pred[test_fatal$is_fatal == 1],
+                         scores.class1 = glm_pred[test_fatal$is_fatal == 0],
+                         curve = TRUE)
+  cat("  PR-AUC =", round(glm_pr_auc$auc.integral, 4), "\n")
+}
+
+# Plot PR curve
+glm_pr_plot <- glm_pr_data %>%
+  ggplot(aes(x = recall, y = precision)) +
+  geom_line(size = 1.2, color = "steelblue") +
+  geom_hline(yintercept = mean(test_fatal$is_fatal), linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = glm_pr_data$recall[which.max(glm_pr_data$f1)], 
+             linetype = "dashed", color = "red", alpha = 0.5) +
+  annotate("point", x = glm_pr_data$recall[which.max(glm_pr_data$f1)], 
+           y = glm_pr_data$precision[which.max(glm_pr_data$f1)], 
+           color = "red", size = 3) +
+  labs(
+    title = "Precision-Recall Curve: Logistic Regression",
+    subtitle = paste("Optimal threshold =", round(glm_optimal_threshold, 4), 
+                     "(maximizes F1)"),
+    x = "Recall (Sensitivity)",
+    y = "Precision"
+  ) +
+  theme_minimal()
+ggsave(here(figures_dir, "ml_01_logistic_pr_curve.png"), glm_pr_plot,
+       width = 8, height = 6, dpi = 300)
+cat("  PR curve plot saved\n")
+
 # Feature importance (coefficients)
 glm_coef <- summary(glm_fatal)$coefficients %>%
   as.data.frame() %>%
@@ -349,23 +844,36 @@ ggsave(here(figures_dir, "ml_01_logistic_coefficients.png"), glm_coef_plot,
        width = 10, height = 8, dpi = 300)
 cat("  Feature coefficients plot saved\n")
 
-# 1.2 Random Forest
-cat("\n1.2 Training Random Forest model...\n")
-rf_fatal <- randomForest(
-  as.factor(is_fatal) ~ .,
-  data = train_fatal,
-  ntree = 100,
-  importance = TRUE
+# 1.2 Random Forest with SMOTE Pipeline
+cat("\n1.2 Training Random Forest model with SMOTE pipeline...\n")
+cat("  Pipeline: Stratified CV + SMOTE resampling + Grid Search + PR-curve threshold tuning\n")
+
+# Use new SMOTE pipeline
+rf_result <- train_rf_with_smote_cv(
+  train_data = train_fatal,
+  test_data = test_fatal,
+  target_var = "is_fatal",
+  features = fatal_features,
+  n_folds = 5,
+  tune_grid = expand.grid(
+    mtry = c(3, 5, 7),
+    ntree = c(100, 200)
+  )
 )
 
-rf_pred <- predict(rf_fatal, newdata = test_fatal)
-rf_pred_proba <- predict(rf_fatal, newdata = test_fatal, type = "prob")[,2]
+rf_fatal <- rf_result$model
+rf_pred_proba <- rf_result$test_pred_proba
+rf_pred <- as.factor(rf_result$test_pred_class)
+rf_optimal_threshold <- rf_result$optimal_threshold
 rf_accuracy <- mean(rf_pred == as.factor(test_fatal$is_fatal))
+
+cat("  Final model trained with best parameters from grid search\n")
+cat("  Optimal threshold (from PR curve):", round(rf_optimal_threshold, 4), "\n")
 
 rf_confusion <- table(Predicted = rf_pred, Actual = as.factor(test_fatal$is_fatal))
 rf_metrics_result <- print_confusion_matrix(rf_pred, test_fatal$is_fatal, 
                                            "Random Forest Confusion Matrix")
-rf_metrics <- calculate_metrics(rf_pred, test_fatal$is_fatal)
+rf_metrics <- calculate_metrics(rf_pred, test_fatal$is_fatal, positive_class = "1")
 
 # Visualize confusion matrix
 rf_cm_plot <- plot_confusion_matrix(
@@ -393,6 +901,36 @@ rf_roc_plot <- ggroc(rf_roc, legacy.axes = TRUE) +
 ggsave(here(figures_dir, "ml_01_rf_roc_curve.png"), rf_roc_plot,
        width = 8, height = 6, dpi = 300)
 cat("  ROC curve plot saved (AUC =", round(auc(rf_roc), 3), ")\n")
+
+# Precision-Recall Curve for Random Forest
+if (require(PRROC, quietly = TRUE)) {
+  rf_pr_auc <- pr.curve(scores.class0 = rf_pred_proba[test_fatal$is_fatal == 1],
+                         scores.class1 = rf_pred_proba[test_fatal$is_fatal == 0],
+                         curve = TRUE)
+  cat("  PR-AUC =", round(rf_pr_auc$auc.integral, 4), "\n")
+}
+
+# Plot PR curve
+rf_pr_plot <- rf_result$pr_data %>%
+  ggplot(aes(x = recall, y = precision)) +
+  geom_line(size = 1.2, color = "darkgreen") +
+  geom_hline(yintercept = mean(test_fatal$is_fatal), linetype = "dashed", color = "gray") +
+  geom_vline(xintercept = rf_result$pr_data$recall[which.max(rf_result$pr_data$f1)], 
+             linetype = "dashed", color = "red", alpha = 0.5) +
+  annotate("point", x = rf_result$pr_data$recall[which.max(rf_result$pr_data$f1)], 
+           y = rf_result$pr_data$precision[which.max(rf_result$pr_data$f1)], 
+           color = "red", size = 3) +
+  labs(
+    title = "Precision-Recall Curve: Random Forest (with SMOTE)",
+    subtitle = paste("Optimal threshold =", round(rf_optimal_threshold, 4), 
+                     "(maximizes F1)"),
+    x = "Recall (Sensitivity)",
+    y = "Precision"
+  ) +
+  theme_minimal()
+ggsave(here(figures_dir, "ml_01_rf_pr_curve.png"), rf_pr_plot,
+       width = 8, height = 6, dpi = 300)
+cat("  PR curve plot saved\n")
 
 # Feature importance
 rf_importance <- importance(rf_fatal) %>%
@@ -585,28 +1123,37 @@ cat("  Feature importance plot saved\n")
 
 cat("\n=== 3. Separate Models: Urban vs Rural ===\n")
 
-# 3.1 Urban Model
-cat("\n3.1 Training models for Urban crashes...\n")
+# 3.1 Urban Model with SMOTE Pipeline
+cat("\n3.1 Training models for Urban crashes with SMOTE pipeline...\n")
 train_urban <- train_fatal %>%
   filter(area_type == "Urban")
 test_urban <- test_fatal %>%
   filter(area_type == "Urban")
 
-rf_urban <- randomForest(
-  as.factor(is_fatal) ~ .,
-  data = train_urban %>% select(-area_type),
-  ntree = 100,
-  importance = TRUE
+# Use SMOTE pipeline for urban model
+urban_features <- setdiff(fatal_features, "area_type")
+rf_urban_result <- train_rf_with_smote_cv(
+  train_data = train_urban,
+  test_data = test_urban,
+  target_var = "is_fatal",
+  features = urban_features,
+  n_folds = 5,
+  tune_grid = expand.grid(
+    mtry = c(3, 5, 7),
+    ntree = c(100, 200)
+  )
 )
 
-rf_urban_pred <- predict(rf_urban, newdata = test_urban %>% select(-area_type))
-rf_urban_pred_proba <- predict(rf_urban, newdata = test_urban %>% select(-area_type), type = "prob")[,2]
+rf_urban <- rf_urban_result$model
+rf_urban_pred_proba <- rf_urban_result$test_pred_proba
+rf_urban_pred <- as.factor(rf_urban_result$test_pred_class)
+rf_urban_optimal_threshold <- rf_urban_result$optimal_threshold
 rf_urban_accuracy <- mean(rf_urban_pred == as.factor(test_urban$is_fatal))
 
 rf_urban_confusion <- table(Predicted = rf_urban_pred, Actual = as.factor(test_urban$is_fatal))
 rf_urban_metrics_result <- print_confusion_matrix(rf_urban_pred, test_urban$is_fatal,
                                                   "Urban Random Forest Confusion Matrix")
-rf_urban_metrics <- calculate_metrics(rf_urban_pred, test_urban$is_fatal)
+rf_urban_metrics <- calculate_metrics(rf_urban_pred, test_urban$is_fatal, positive_class = "1")
 
 # Visualize confusion matrix
 rf_urban_cm_plot <- plot_confusion_matrix(
@@ -636,28 +1183,37 @@ ggsave(here(figures_dir, "ml_03_urban_roc_curve.png"), rf_urban_roc_plot,
        width = 8, height = 6, dpi = 300)
 cat("  Urban ROC curve plot saved (AUC =", round(auc(rf_urban_roc), 3), ")\n")
 
-# 3.2 Rural Model
-cat("\n3.2 Training models for Rural crashes...\n")
+# 3.2 Rural Model with SMOTE Pipeline
+cat("\n3.2 Training models for Rural crashes with SMOTE pipeline...\n")
 train_rural <- train_fatal %>%
   filter(area_type == "Rural")
 test_rural <- test_fatal %>%
   filter(area_type == "Rural")
 
-rf_rural <- randomForest(
-  as.factor(is_fatal) ~ .,
-  data = train_rural %>% select(-area_type),
-  ntree = 100,
-  importance = TRUE
+# Use SMOTE pipeline for rural model
+rural_features <- setdiff(fatal_features, "area_type")
+rf_rural_result <- train_rf_with_smote_cv(
+  train_data = train_rural,
+  test_data = test_rural,
+  target_var = "is_fatal",
+  features = rural_features,
+  n_folds = 5,
+  tune_grid = expand.grid(
+    mtry = c(3, 5, 7),
+    ntree = c(100, 200)
+  )
 )
 
-rf_rural_pred <- predict(rf_rural, newdata = test_rural %>% select(-area_type))
-rf_rural_pred_proba <- predict(rf_rural, newdata = test_rural %>% select(-area_type), type = "prob")[,2]
+rf_rural <- rf_rural_result$model
+rf_rural_pred_proba <- rf_rural_result$test_pred_proba
+rf_rural_pred <- as.factor(rf_rural_result$test_pred_class)
+rf_rural_optimal_threshold <- rf_rural_result$optimal_threshold
 rf_rural_accuracy <- mean(rf_rural_pred == as.factor(test_rural$is_fatal))
 
 rf_rural_confusion <- table(Predicted = rf_rural_pred, Actual = as.factor(test_rural$is_fatal))
 rf_rural_metrics_result <- print_confusion_matrix(rf_rural_pred, test_rural$is_fatal,
                                                  "Rural Random Forest Confusion Matrix")
-rf_rural_metrics <- calculate_metrics(rf_rural_pred, test_rural$is_fatal)
+rf_rural_metrics <- calculate_metrics(rf_rural_pred, test_rural$is_fatal, positive_class = "1")
 
 # Visualize confusion matrix
 rf_rural_cm_plot <- plot_confusion_matrix(

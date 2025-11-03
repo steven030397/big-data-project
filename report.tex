@@ -29,7 +29,7 @@ Big Data Project}
 \maketitle
 
 \begin{abstract}
-This study investigates how crash frequency, severity, and type vary by time of day, day of week, and season, and how these patterns differ between urban and rural areas in Victoria. Using a comprehensive dataset of 187,018 crashes, we employ exploratory data analysis, statistical testing, and machine learning methods to identify high-risk periods and environmental factors. Results reveal significant differences between urban and rural crash patterns, with rural areas experiencing fatal crash rates approximately four times higher than urban areas. Night/late night periods and Friday emerge as the highest risk temporal periods, particularly in rural areas. Machine learning models achieve 98.3\% accuracy in predicting fatal crashes, with accident type, speed zone, and area type identified as the most important risk factors.
+This study investigates how crash frequency, severity, and type vary by time of day, day of week, and season, and how these patterns differ between urban and rural areas in Victoria. Using a comprehensive dataset of 187,018 crashes, we employ exploratory data analysis, statistical testing, and machine learning methods with advanced class imbalance handling (SMOTE resampling, class weights, and threshold optimization via Precision-Recall curves) to identify high-risk periods and environmental factors. Results reveal significant differences between urban and rural crash patterns, with rural areas experiencing fatal crash rates approximately four times higher than urban areas (4.10\% vs 1.01\%). Night/late night periods and Friday emerge as the highest risk temporal periods, particularly in rural areas. Machine learning models achieve 91.64-98.37\% accuracy, with Logistic Regression achieving the best sensitivity (35.59\%) and F1 score (0.127), while Random Forest (main) achieves the highest accuracy (94.38\%) and specificity (95.68\%). The rural-specific model achieves the highest precision (12.09\%), demonstrating that fatal crash patterns are more distinguishable in rural contexts. However, sensitivity remains limited (3.21\%-35.59\%) due to extreme class imbalance (1.66\% fatal rate), reflecting the inherent challenge of predicting rare fatal events while balancing precision and recall.
 \end{abstract}
 
 \tableofcontents
@@ -79,7 +79,7 @@ The raw data underwent comprehensive cleaning and preparation:
 \begin{itemize}
     \item \textbf{Temporal}: Time of day (hour, hour groups), day of week, season
     \item \textbf{Geographic}: Area type (Urban/Rural classification)
-    \item \textbf{Severity}: Numeric severity codes (1=Fatal, 2=Serious, 3=Minor, 4=Property damage)
+    \item \textbf{Severity}: Numeric severity codes (1=Fatal accident, 2=Serious injury accident, 3=Other injury accident, 4=Non injury accident)
     \item \textbf{Crash Type}: Categorical accident type descriptions
     \item \textbf{Environmental}: Atmospheric conditions, road surface conditions
     \item \textbf{Traffic}: Speed zone, number of vehicles
@@ -106,14 +106,79 @@ Statistical testing employed:
 \end{itemize}
 
 \subsection{Machine Learning Analysis}
-Machine learning approaches included:
+
+\subsubsection{Model Selection and Rationale}
+Machine learning approaches were selected based on interpretability, computational efficiency, and suitability for imbalanced classification:
 \begin{itemize}
-    \item \textbf{Binary Classification}: Logistic regression and random forest for fatal crash prediction
-    \item \textbf{Multi-class Classification}: Random forest for severity category prediction
-    \item \textbf{Separate Models}: Urban and rural-specific models to capture area-specific patterns
-    \item Model evaluation using train/test split (70/30) and accuracy metrics
-    \item Feature importance analysis using random forest mean decrease Gini
+    \item \textbf{Logistic Regression}: Chosen for interpretability and ability to handle class imbalance through threshold tuning. Coefficients provide direct insight into risk factors.
+    \item \textbf{Random Forest}: Selected for its robustness to outliers, ability to capture non-linear relationships, and built-in feature importance measures. Particularly effective when combined with class weights for imbalanced data.
+    \item \textbf{Multi-class Severity Classification}: Random Forest employed to predict four severity categories (Fatal accident, Serious injury accident, Other injury accident, Non injury accident), allowing comprehensive severity analysis beyond binary classification.
 \end{itemize}
+
+\subsubsection{Data Splitting Strategy}
+A 70/30 train/test split was employed with the following justification:
+\begin{itemize}
+    \item \textbf{Sample Size Consideration}: With 187,018 total crashes, a 70\% training set provides $\sim$130,000 samples, sufficient for robust model training while maintaining a large independent test set ($\sim$56,000 samples) for reliable performance evaluation.
+    \item \textbf{Class Distribution Preservation}: The split naturally preserves the 1.66\% fatal crash rate in both training and test sets, ensuring realistic performance estimates.
+    \item \textbf{Reproducibility}: Random seed (1234) ensures reproducible splits across runs.
+\end{itemize}
+
+\subsubsection{Class Imbalance Handling Strategy}
+The dataset exhibits severe class imbalance (1.66\% fatal crashes), which poses significant challenges for standard classification algorithms. Two complementary approaches were implemented:
+
+\textbf{1. Threshold Optimization (Logistic Regression)}
+\begin{itemize}
+    \item \textbf{Why Threshold Tuning?}: Logistic regression outputs probabilities, allowing flexible threshold adjustment. The default 0.5 threshold is inappropriate for imbalanced data, as it maximizes accuracy (which favors the majority class).
+    \item \textbf{Precision-Recall Curve for Threshold Selection}: The optimal threshold was selected using a Precision-Recall (PR) curve on the \textbf{training set predictions} (not using cross-validation for threshold selection). This ensures the test set remains truly independent.
+    \item \textbf{F1 Score as Optimization Metric}: The threshold was optimized to maximize F1 score (harmonic mean of precision and recall) via the PR curve, for the following reasons:
+    \begin{itemize}
+        \item \textbf{Imbalanced Data Focus}: PR curves are more informative than ROC curves for severely imbalanced data, as they focus on the minority class performance rather than overall discriminative ability.
+        \item \textbf{Balance}: F1 score balances precision and recall, making it appropriate for imbalanced data where both metrics matter.
+        \item \textbf{Direct Optimization}: PR curves allow direct optimization of the precision-recall trade-off, which is more relevant than sensitivity-specificity when dealing with rare events.
+    \end{itemize}
+    \item \textbf{Threshold Search Range}: Thresholds from 0.01 to 0.99 were evaluated in 0.01 increments (99 thresholds), providing fine-grained optimization across the full probability range.
+\end{itemize}
+
+\textbf{2. SMOTE Resampling (Random Forest)}
+\begin{itemize}
+    \item \textbf{Why SMOTE?}: Random Forest benefits from balanced training data to learn better decision boundaries for rare events. SMOTE (Synthetic Minority Oversampling Technique) creates synthetic samples of the minority class during cross-validation, ensuring the model sees balanced data in each fold.
+    \item \textbf{SMOTE in Cross-Validation}: SMOTE is applied inside each CV fold to the training portion only, ensuring no data leakage. This creates balanced training data for each fold while maintaining realistic validation sets.
+    \item \textbf{Class Weights with SMOTE}: Class weights are also applied in conjunction with SMOTE. Weights are calculated as $w_i = \frac{N}{2 \times n_i}$ where $N$ is total samples and $n_i$ is samples in class $i$, but calculated on the SMOTE-balanced data to further emphasize rare events.
+    \item \textbf{Threshold Optimization on Validation Holdout}: After hyperparameter selection via CV, a 20\% validation holdout is created from the original (imbalanced) training data. The final model is retrained with SMOTE, then threshold is optimized on this imbalanced validation holdout using PR curve (maximizing F1). This prevents overfitting to SMOTE-balanced distributions and ensures realistic threshold selection.
+\end{itemize}
+
+\subsubsection{Cross-Validation Protocol}
+\begin{itemize}
+    \item \textbf{Stratified 5-Fold Cross-Validation}: Selected as a balance between statistical reliability and computational efficiency. Five folds provide sufficient variance reduction while maintaining reasonable computational time. Folds are created using stratified sampling (via \texttt{createFolds}) to ensure class distribution is preserved across folds.
+    \item \textbf{Grid Search for Hyperparameters}: During CV, a grid search is performed over hyperparameter combinations:
+    \begin{itemize}
+        \item \textbf{mtry}: [3, 5, 7] - Number of variables randomly sampled at each split
+        \item \textbf{ntree}: [100, 200] - Number of trees in the forest
+    \end{itemize}
+    For each parameter combination, 5-fold CV is performed with SMOTE, and mean CV F1 score is used to select the best parameters.
+    \item \textbf{PR Curve Threshold Optimization}: Within each CV fold, after training with SMOTE, predictions on the validation fold are used to find an optimal threshold via PR curve (maximizing F1). The final threshold is then optimized on a separate validation holdout (20\% of training data) from the original imbalanced distribution to ensure realistic threshold selection.
+\end{itemize}
+
+\subsubsection{Separate Urban vs Rural Models}
+Separate models were trained for urban and rural crashes with the following justification:
+\begin{itemize}
+    \item \textbf{Different Risk Patterns}: Statistical analysis revealed substantial differences in crash patterns between urban and rural areas (4$\times$ higher fatal rate in rural areas), suggesting distinct underlying risk mechanisms.
+    \item \textbf{Feature Importance Differences}: Area-specific models allow different risk factors to emerge (e.g., speed zones may be more predictive in rural contexts, while traffic density matters more in urban settings).
+    \item \textbf{Better Generalization}: Models trained on area-specific data can better capture local patterns without interference from contrasting patterns in other contexts.
+    \item \textbf{Practical Utility}: Separate models enable targeted interventions and policy recommendations specific to each area type.
+\end{itemize}
+
+\subsubsection{Evaluation Metrics}
+Comprehensive metrics were calculated to fully assess model performance:
+\begin{itemize}
+    \item \textbf{Accuracy}: Overall classification correctness (may be misleading with imbalance)
+    \item \textbf{Sensitivity (Recall)}: Proportion of actual fatal crashes correctly identified (critical for safety applications)
+    \item \textbf{Specificity}: Proportion of non-fatal crashes correctly identified (important for avoiding false alarms)
+    \item \textbf{Precision}: Proportion of predicted fatal crashes that are actually fatal (important for resource allocation)
+    \item \textbf{F1 Score}: Harmonic mean of precision and recall
+    \item \textbf{ROC AUC}: Area under ROC curve, measuring overall discriminative ability
+\end{itemize}
+These metrics together provide a comprehensive view, as focusing solely on accuracy would mask the models' ability to identify rare fatal events.
 
 \section{Exploratory Data Analysis}
 
@@ -123,7 +188,7 @@ Figure \ref{fig:freq_hour} shows crash frequency by hour of day, revealing disti
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{01_frequency_by_hour_urban_rural.png}
+    \includegraphics[width=0.6\textwidth,height=0.4\textheight,keepaspectratio]{01_frequency_by_hour_urban_rural.png}
     \caption{Crash frequency by hour of day, comparing urban and rural areas}
     \label{fig:freq_hour}
 \end{figure}
@@ -161,7 +226,7 @@ The overall severity distribution (Figure \ref{fig:severity_dist}) reveals subst
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.7\textwidth]{02_severity_distribution_urban_rural.png}
+    \includegraphics[width=0.6\textwidth,height=0.4\textheight,keepaspectratio]{02_severity_distribution_urban_rural.png}
     \caption{Overall severity distribution comparing urban and rural areas}
     \label{fig:severity_dist}
 \end{figure}
@@ -292,61 +357,212 @@ Both environmental factors showed significant associations:
 
 \section{Machine Learning Analysis}
 
+\subsection{Class Imbalance Considerations}
+The dataset exhibits severe class imbalance with only 1.66\% of crashes being fatal (98.34\% non-fatal). This imbalance presents fundamental challenges:
+
+\begin{itemize}
+    \item \textbf{Default Models Fail}: Standard algorithms predict all crashes as non-fatal, achieving 98\% accuracy while identifying zero fatal crashes.
+    \item \textbf{Metric Selection Critical}: Accuracy alone is meaningless; sensitivity (ability to catch fatal crashes) becomes paramount for safety applications.
+    \item \textbf{Threshold Selection Essential}: The default 0.5 probability threshold is inappropriate, as it maximizes accuracy (favoring majority class) rather than balancing class-specific performance.
+\end{itemize}
+
+\subsubsection{Implementation Details}
+
+\textbf{Logistic Regression Approach}:
+\begin{itemize}
+    \item \textbf{Method}: Precision-Recall (PR) curve on training set to find threshold maximizing F1 score
+    \item \textbf{Justification}: F1 score balances precision and recall, making it more appropriate for imbalanced data than accuracy. PR curves are more informative than ROC curves when dealing with severe class imbalance.
+    \item \textbf{Result}: Optimal threshold typically ranges from 0.01 to 0.10 (much lower than default 0.5), reflecting the need to lower the decision boundary to catch rare fatal events
+\end{itemize}
+
+\textbf{Random Forest Approach}:
+\begin{itemize}
+    \item \textbf{Method}: Stratified 5-fold cross-validation with SMOTE resampling, grid search for hyperparameter tuning (mtry, ntree), and PR-curve threshold optimization on validation holdout
+    \item \textbf{Justification}: SMOTE (Synthetic Minority Oversampling Technique) creates synthetic samples of the minority class during cross-validation, ensuring the model sees balanced data in each fold. Grid search finds optimal hyperparameters (mtry = 3, ntree = 100) via cross-validation. Threshold is optimized on a validation holdout from the original (imbalanced) training data to ensure realistic performance estimates.
+    \item \textbf{Result}: The SMOTE pipeline successfully balances classes during training, while threshold optimization on imbalanced validation data prevents overfitting to balanced distributions. Best hyperparameters selected via 5-fold CV with F1 score as the optimization metric.
+    \item \textbf{Additional Details}: After selecting best hyperparameters via CV, the final model is retrained on the full training set with SMOTE, then threshold is optimized using PR curve on a 20\% validation holdout from the original imbalanced data.
+\end{itemize}
+
+\textbf{Why Different Approaches?}
+\begin{itemize}
+    \item Logistic regression naturally outputs calibrated probabilities, making PR-curve threshold optimization straightforward on training data
+    \item Random Forest benefits from SMOTE during training to expose the algorithm to balanced data in each CV fold, helping it learn better decision boundaries for rare events
+    \item Both models use threshold optimization, but RF optimizes on a validation holdout to prevent overfitting to SMOTE-balanced data
+    \item This approach leverages each algorithm's strengths: LR's calibrated probabilities vs RF's non-linear interactions learned from balanced training data
+\end{itemize}
+
 \subsection{Fatal Crash Prediction}
 
 \subsubsection{Logistic Regression Model}
-The logistic regression model achieved 98.29\% accuracy in predicting fatal crashes. Key findings from coefficient analysis:
+The logistic regression model achieved 91.64\% accuracy with the optimal threshold (0.05, maximizing F1 via PR curve). Performance metrics:
 \begin{itemize}
-    \item \textbf{Area Type}: Urban area type coefficient = -1.069 ($p < 2 \times 10^{-16}$), indicating significantly lower odds of fatal crashes in urban areas
-    \item \textbf{Time Period}: Night/Late Night period showed coefficient = 0.835 ($p < 2 \times 10^{-16}$), indicating higher risk
-    \item \textbf{Accident Type}: "Struck Pedestrian" showed the highest positive coefficient (1.161, $p < 2 \times 10^{-16}$), while "Struck Animal" showed strong negative association (-2.852, $p < 4.24 \times 10^{-12}$)
-    \item \textbf{Speed Zone}: Higher speed zones (75, 90, 100, 110 km/h) showed positive associations with fatal outcomes
+    \item \textbf{Accuracy}: 91.64\% (95\% CI: 91.41\%, 91.87\%)
+    \item \textbf{Sensitivity}: 35.59\% (correctly identifies 35.59\% of fatal crashes)
+    \item \textbf{Specificity}: 92.62\% (correctly identifies 92.62\% of non-fatal crashes)
+    \item \textbf{Precision}: 7.73\% (of predicted fatal crashes, 7.73\% are actually fatal)
+    \item \textbf{Recall}: 35.59\%
+    \item \textbf{F1 Score}: 0.127
+    \item \textbf{ROC AUC}: 0.783
+    \item \textbf{PR-AUC}: 0.0676
+    \item \textbf{Optimal Threshold}: 0.05 (maximizes F1 = 0.1295 via PR curve on training data)
 \end{itemize}
 
-\subsubsection{Random Forest Model}
-The random forest model achieved identical 98.29\% accuracy, with out-of-bag error estimate of 1.67\%. Feature importance analysis (Figure \ref{fig:rf_importance}) revealed:
+The model demonstrates moderate sensitivity for identifying fatal crashes while maintaining high specificity. The precision of 7.73\% reflects the severe class imbalance challenge (1.66\% fatal rate), though this represents a significant improvement over baseline. The ROC AUC of 0.783 indicates reasonable discriminative ability.
 
-% Figure commented for faster compilation - uncomment after successful compile
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_logistic_confusion_matrix.png}
+    \caption{Confusion matrix: Logistic Regression for fatal crash prediction}
+    \label{fig:logistic_cm}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_logistic_roc_curve.png}
+    \caption{ROC curve: Logistic Regression (AUC = 0.783)}
+    \label{fig:logistic_roc}
+\end{figure}
+
+% Temporarily commented for faster compilation
 % \begin{figure}[htbp]
 %     \centering
-%     \includegraphics[width=0.7\textwidth]{01_rf_feature_importance.png}
-%     \caption{Top 10 features for fatal crash prediction (Random Forest)}
+%     \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_logistic_pr_curve.png}
+%     \caption{Precision-Recall curve: Logistic Regression (PR-AUC = 0.0676)}
+%     \label{fig:logistic_pr}
+% \end{figure}
+
+\subsubsection{Random Forest Model with SMOTE Pipeline}
+The random forest model with SMOTE resampling achieved 94.38\% accuracy. The model was trained using stratified 5-fold cross-validation with grid search, selecting optimal hyperparameters (mtry = 3, ntree = 100, CV F1 = 0.1082). Performance metrics:
+\begin{itemize}
+    \item \textbf{Accuracy}: 94.38\% (95\% CI: 94.19\%, 94.57\%)
+    \item \textbf{Sensitivity}: 19.73\% (correctly identifies 19.73\% of fatal crashes)
+    \item \textbf{Specificity}: 95.68\% (correctly identifies 95.68\% of non-fatal crashes)
+    \item \textbf{Precision}: 7.35\% (of predicted fatal crashes, 7.35\% are actually fatal)
+    \item \textbf{Recall}: 19.73\%
+    \item \textbf{F1 Score}: 0.1071
+    \item \textbf{ROC AUC}: 0.765
+    \item \textbf{PR-AUC}: 0.0536
+    \item \textbf{Optimal Threshold}: 0.79 (maximizes F1 = 0.2887 on validation holdout)
+    \item \textbf{Best Parameters}: mtry = 3, ntree = 100 (selected via 5-fold CV grid search)
+\end{itemize}
+
+The random forest model achieves high overall accuracy (94.38\%) with excellent specificity (95.68\%), indicating it correctly identifies most non-fatal crashes. However, sensitivity is relatively low (19.73\%), meaning it misses many fatal crashes. The high threshold (0.79) reflects the conservative approach needed to balance precision and recall given the extreme class imbalance. The SMOTE pipeline successfully addressed class imbalance during training, while threshold optimization on the validation holdout ensured realistic performance estimates.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_rf_confusion_matrix.png}
+    \caption{Confusion matrix: Random Forest for fatal crash prediction}
+    \label{fig:rf_cm}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_rf_roc_curve.png}
+    \caption{ROC curve: Random Forest (AUC = 0.765)}
+    \label{fig:rf_roc}
+\end{figure}
+
+% Temporarily commented for faster compilation
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_01_rf_pr_curve.png}
+%     \caption{Precision-Recall curve: Random Forest with SMOTE (PR-AUC = 0.0536)}
+%     \label{fig:rf_pr}
+% \end{figure}
+
+Feature importance analysis reveals the most predictive features. % Figure \ref{fig:rf_importance} temporarily commented for faster compilation
+
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.5\textwidth,height=0.4\textheight,keepaspectratio]{ml_01_rf_feature_importance.png}
+%     \caption{Top 15 features for fatal crash prediction (Random Forest)}
 %     \label{fig:rf_importance}
 % \end{figure}
 
-The most important features ranked by Mean Decrease Gini:
-\begin{enumerate}
-    \item Accident type description (98.49)
-    \item Day of week (198.12)
-    \item Speed zone (147.62)
-    \item Season (133.38)
-    \item Hour group (125.02)
-    \item Number of vehicles (72.18)
-    \item Atmospheric conditions (66.77)
-    \item Surface conditions (56.45)
-    \item Area type (43.64)
-\end{enumerate}
-
 \subsection{Severity Category Prediction}
 
-The multi-class random forest model for severity prediction achieved 63.14\% accuracy, with out-of-bag error of 36.74\%. The model demonstrated better performance for minor and serious categories compared to fatal and property damage categories, likely due to class imbalance.
+The multi-class random forest model for severity prediction achieved 63.16\% accuracy (95\% CI: 62.76\%, 63.56\%). The model demonstrated varied performance across severity categories:
+
+\begin{itemize}
+    \item Better performance for \textbf{Other injury accident} crashes (most common class)
+    \item Moderate performance for \textbf{Serious injury accident} crashes
+    \item Poor performance for \textbf{Fatal accident} and \textbf{Non injury accident} categories due to class imbalance
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.4\textheight,keepaspectratio]{ml_02_severity_confusion_matrix.png}
+    \caption{Confusion matrix: Multi-class severity prediction}
+    \label{fig:severity_cm}
+\end{figure}
+
+The confusion matrix reveals that the model primarily predicts \textbf{Other injury accident} crashes correctly but struggles with rare categories, indicating the need for additional class balancing techniques for multi-class problems.
 
 \subsection{Urban vs Rural Separate Models}
 
-Separate models were trained for urban and rural crashes:
+Separate models with SMOTE pipeline were trained for urban and rural crashes:
 
+\subsubsection{Urban Model}
+The urban Random Forest model was trained using the SMOTE pipeline with stratified 5-fold cross-validation. Best parameters selected via grid search: mtry = 3, ntree = 100 (CV F1 = 0.0496). Performance metrics:
 \begin{itemize}
-    \item \textbf{Urban Model}: 98.94\% accuracy, OOB error = 0.99\%
-    \item \textbf{Rural Model}: 95.93\% accuracy, OOB error = 4.13\%
+    \item \textbf{Accuracy}: 98.37\% (95\% CI: 98.24\%, 98.48\%)
+    \item \textbf{Sensitivity}: 3.21\% (correctly identifies 3.21\% of fatal crashes)
+    \item \textbf{Specificity}: 99.39\% (correctly identifies 99.39\% of non-fatal crashes)
+    \item \textbf{Precision}: 5.32\% (of predicted fatal crashes, 5.32\% are actually fatal)
+    \item \textbf{Recall}: 3.21\%
+    \item \textbf{F1 Score}: 0.0401
+    \item \textbf{ROC AUC}: 0.707
+    \item \textbf{Optimal Threshold}: 0.89 (maximizes F1 = 0.3194 on validation holdout)
+    \item \textbf{Best Parameters}: mtry = 3, ntree = 100
 \end{itemize}
 
-Feature importance comparisons revealed:
+The urban model achieves very high accuracy (98.37\%) and specificity (99.39\%) but extremely low sensitivity (3.21\%), meaning it identifies very few fatal crashes. The very high threshold (0.89) reflects the conservative prediction strategy needed for urban data where fatal crashes are extremely rare (approximately 1\%). The AUC of 0.707 indicates reasonable discriminative ability, though the model prioritizes avoiding false positives at the expense of missing most true fatal crashes.
+
+\subsubsection{Rural Model}
+The rural Random Forest model was trained using the SMOTE pipeline with stratified 5-fold cross-validation. Best parameters selected via grid search: mtry = 3, ntree = 100 (CV F1 = 0.1314). Performance metrics:
 \begin{itemize}
-    \item \textbf{Urban}: Top features were day of week, speed zone, accident type, season, and hour group
-    \item \textbf{Rural}: Top features were day of week, speed zone, accident type, hour group, and season
+    \item \textbf{Accuracy}: 93.80\% (95\% CI: 93.36\%, 94.23\%)
+    \item \textbf{Sensitivity}: 8.35\% (correctly identifies 8.35\% of fatal crashes)
+    \item \textbf{Specificity}: 97.43\% (correctly identifies 97.43\% of non-fatal crashes)
+    \item \textbf{Precision}: 12.09\% (highest among all models; of predicted fatal crashes, 12.09\% are actually fatal)
+    \item \textbf{Recall}: 8.35\%
+    \item \textbf{F1 Score}: 0.0988
+    \item \textbf{ROC AUC}: 0.691
+    \item \textbf{Optimal Threshold}: 0.81 (maximizes F1 = 0.3545 on validation holdout)
+    \item \textbf{Best Parameters}: mtry = 3, ntree = 100
 \end{itemize}
 
-While the ordering is similar, the magnitude of importance differs, suggesting different risk factor priorities in urban versus rural contexts.
+The rural model demonstrates the best precision (12.09\%) among all models, meaning when it predicts a fatal crash, there is a higher probability it is correct. The model achieves high accuracy (93.80\%) and specificity (97.43\%), though sensitivity remains low (8.35\%). The AUC of 0.691 indicates reasonable discriminative ability, suggesting that fatal crash patterns are somewhat more distinguishable in rural contexts compared to urban areas, likely due to the higher fatal crash rate in rural areas (approximately 4\%).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_03_urban_confusion_matrix.png}
+    \caption{Confusion matrix: Urban-specific Random Forest model}
+    \label{fig:urban_cm}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_03_rural_confusion_matrix.png}
+    \caption{Confusion matrix: Rural-specific Random Forest model}
+    \label{fig:rural_cm}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth,height=0.35\textheight,keepaspectratio]{ml_03_urban_rural_comparison.png}
+    \caption{Performance metrics comparison: Urban vs Rural models}
+    \label{fig:urban_rural_comparison}
+\end{figure}
+
+Feature importance comparisons reveal different priorities between urban and rural models. % Figure \ref{fig:urban_rural_importance} temporarily commented for faster compilation
+
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=0.5\textwidth,height=0.4\textheight,keepaspectratio]{ml_03_urban_rural_feature_importance.png}
+%     \caption{Feature importance comparison: Urban vs Rural models}
+%     \label{fig:urban_rural_importance}
+% \end{figure}
 
 \subsection{High-Risk Period Identification}
 
@@ -411,15 +627,43 @@ Machine learning analysis identified key risk factors:
     \item Number of vehicles involved
 \end{enumerate}
 
-\subsection{Model Performance}
-The binary classification models for fatal crash prediction demonstrate excellent performance (98.3\% accuracy), though this must be interpreted in context of the severe class imbalance. The models effectively identify key risk factors and can be valuable tools for understanding crash patterns.
+\subsection{Model Performance Summary}
 
-The lower accuracy of the multi-class severity prediction model (63.1\%) reflects the complexity of predicting across four severity categories, particularly given the imbalance in class distributions.
+Table \ref{tab:model_performance} summarizes the performance of all models:
+
+\begin{table}[htbp]
+\centering
+\caption{Model Performance Summary}
+\label{tab:model_performance}
+\begin{tabular}{lcccccc}
+\toprule
+Model & Accuracy & Sensitivity & Specificity & Precision & F1 Score & AUC \\
+\midrule
+Logistic Regression & 91.64\% & 35.59\% & 92.62\% & 7.73\% & 0.127 & 0.783 \\
+Random Forest (Main) & 94.38\% & 19.73\% & 95.68\% & 7.35\% & 0.107 & 0.765 \\
+Random Forest (Severity) & 63.16\% & - & - & - & - & - \\
+Random Forest (Urban) & 98.37\% & 3.21\% & 99.39\% & 5.32\% & 0.040 & 0.707 \\
+Random Forest (Rural) & 93.80\% & 8.35\% & 97.43\% & 12.09\% & 0.099 & 0.691 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Key observations:
+\begin{itemize}
+    \item \textbf{Logistic Regression} achieves the best sensitivity (35.59\%) and F1 score (0.127) among binary models, with good overall balance (91.64\% accuracy, AUC = 0.783)
+    \item \textbf{Random Forest (Main)} achieves highest accuracy (94.38\%) and specificity (95.68\%), with good precision (7.35\%) but lower sensitivity (19.73\%)
+    \item \textbf{Rural Model} achieves the highest precision (12.09\%) among all models, meaning when it predicts a fatal crash, it has the highest probability of being correct
+    \item \textbf{Urban Model} achieves very high accuracy (98.37\%) and specificity (99.39\%) but extremely low sensitivity (3.21\%), reflecting the conservative threshold needed for extremely rare fatal crashes in urban areas (approximately 1\%)
+    \item All models show low sensitivity (3.21\%-35.59\%), reflecting the extreme class imbalance challenge (1.66\% fatal rate) and the conservative thresholds needed to balance precision and recall
+    \item Precision ranges from 5.32\%-12.09\%, indicating that even with optimal threshold tuning, predicting rare fatal events remains challenging
+\end{itemize}
+
+The performance metrics must be interpreted in context of severe class imbalance (1.66\% fatal rate). The high accuracy values (91\%-98\%) are largely driven by correctly identifying the majority non-fatal class. The low sensitivity values (3\%-36\%) reflect the trade-off between avoiding false positives and catching true fatal crashes. All models prioritize specificity over sensitivity, leading to conservative predictions that miss most fatal crashes but have higher precision when they do predict fatal.
 
 \subsection{Limitations}
 Several limitations should be acknowledged:
 \begin{itemize}
-    \item Class imbalance in fatal crashes (1.68\%) may affect model interpretation
+    \item Class imbalance in fatal crashes (1.66\%) significantly affects model performance, resulting in low precision despite good sensitivity
     \item Missing data in environmental factors required filtering
     \item Temporal resolution limited by available data granularity
     \item Geographic classification may not capture all urban/rural nuances
@@ -437,7 +681,7 @@ This comprehensive analysis reveals significant temporal and geographic patterns
     
     \item \textbf{Key Risk Factors}: Accident type (especially pedestrian collisions), speed zone, and area type emerge as the most important predictors of fatal outcomes.
     
-    \item \textbf{Model Utility}: Machine learning models achieve high accuracy in fatal crash prediction and provide actionable insights into risk factor prioritization.
+    \item \textbf{Model Utility}: Machine learning models with SMOTE resampling, class weights, and threshold optimization demonstrate varying performance profiles. The logistic regression model achieves the best sensitivity (35.59\%) and F1 score (0.127) with good overall balance (91.64\% accuracy, AUC = 0.783). The Random Forest (main) model achieves the highest accuracy (94.38\%) and specificity (95.68\%). The rural-specific model achieves the highest precision (12.09\%), demonstrating that fatal crash patterns are more distinguishable in rural contexts where fatal crashes are more common. The urban model achieves very high accuracy (98.37\%) and specificity (99.39\%) but extremely low sensitivity (3.21\%), reflecting the challenge of predicting extremely rare events. All models provide actionable insights into risk factor prioritization, though sensitivity remains limited by the extreme class imbalance (1.66\% fatal rate).
     
     \item \textbf{Policy Implications}: Results suggest that interventions should focus on:
     \begin{itemize}

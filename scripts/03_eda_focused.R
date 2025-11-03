@@ -55,7 +55,7 @@ node_agg <- node %>%
   )
 
 # Aggregate person-level severity to accident level
-# Note: inj_level numeric: 1=Fat (most severe), 3=Ser, 4=Not (least severe)
+# Note: inj_level numeric: 1=Fatality (most severe), 2=Serious injury, 3=Other injury, 4=Not injured (least severe)
 # We want MIN inj_level (lowest number = most severe injury in accident)
 # Accident table already has severity, but person-level gives us counts
 cat("  Aggregating person-level severity data...\n")
@@ -67,7 +67,7 @@ person_agg <- person %>%
     # Get most severe injury description
     max_severity_desc = case_when(
       any(inj_level == 1, na.rm = TRUE) ~ "Fat",  # Fatal if any
-      any(inj_level == 3, na.rm = TRUE) ~ "Ser",  # Serious if any
+      any(inj_level == 2, na.rm = TRUE) ~ "Ser",  # Serious if any (FIXED: was 3, should be 2)
       TRUE ~ "Not"  # Otherwise not injured
     ),
     total_fatalities = sum(inj_level_desc == "Fat", na.rm = TRUE),
@@ -171,10 +171,10 @@ accident_main <- accident_main %>%
     ),
     area_type = factor(area_type, levels = c("Urban", "Rural", "Unknown"))
   ) %>%
-  # Ensure day of week is ordered
+  # Ensure day of week is ordered (1=Sunday, 2=Monday, ..., 7=Saturday per data dictionary)
   mutate(
     day_week_desc = factor(day_week_desc, levels = c(
-      "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+      "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
     ))
   )
 
